@@ -81,16 +81,23 @@ def loss(self, y_hat, y):
 
 
 data = d2l.FashionMNIST(batch_size=256)
+data.num_workers = 0
+# data.train = data.train.data
+# data.val = data.val.data
 model = SoftmaxRegressionScratch(num_inputs=784, num_outputs=10, lr=0.1)
 trainer = d2l.Trainer(max_epochs=10)
 trainer.fit(model, data)
 
+d2l.plt.show()
+
 X, y = next(iter(data.val_dataloader()))
 preds = model(X).argmax(axis=1)
-preds.shape
+print(preds.shape)
 
 wrong = preds.type(y.dtype) != y
 X, y, preds = X[wrong], y[wrong], preds[wrong]
 labels = [a + '\n' + b for a, b in zip(
     data.text_labels(y), data.text_labels(preds))]
 data.visualize([X, y], labels=labels)
+
+d2l.plt.show()

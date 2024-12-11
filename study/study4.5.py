@@ -30,3 +30,5 @@ data.num_workers = 0
 model = SoftmaxRegression(num_outputs=10, lr=0.1)
 trainer = d2l.Trainer(max_epochs=10)
 trainer.fit(model, data)
+
+d2l.plt.show()

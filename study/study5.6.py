@@ -28,6 +28,7 @@ class DropoutMLPScratch(d2l.Classifier):
 
     def forward(self, X):
         H1 = self.relu(self.lin1(X.reshape((X.shape[0], -1))))
+        self.variance.forward(H1)
         if self.training:
             H1 = dropout_layer(H1, self.dropout_1)
         H2 = self.relu(self.lin2(H1))
@@ -36,16 +37,45 @@ class DropoutMLPScratch(d2l.Classifier):
         return self.lin3(H2)
 
 
+class ActivationsVariance(d2l.Classifier):
+    def __init__(self, trainer, layer):
+        super().__init__()
+        self.trainer = trainer
+        self.board = d2l.ProgressBoard()
+        self.layer = layer
+
+    def forward(self, X):
+        variance = torch.var(X, dim=0, unbiased=False, keepdim=False)
+        meanVar = torch.mean(variance)
+
+        print(meanVar)
+
+        self.board.xlabel = 'epoch'
+
+        x = self.trainer.train_batch_idx / \
+            self.trainer.num_train_batches
+        n = self.trainer.num_train_batches / \
+            self.plot_train_per_epoch
+
+        self.board.draw(x, d2l.numpy(d2l.to(meanVar, d2l.cpu())),
+                        'activations_variance_' + str(self.layer),
+                        every_n=int(n))
+        return X
+
+
 hparams = {'num_outputs': 10, 'num_hiddens_1': 256, 'num_hiddens_2': 256,
-           'dropout_1': 1, 'dropout_2': 0.5, 'lr': 0.1}
+           'dropout_1': 0.5, 'dropout_2': 0.5, 'lr': 0.1}
 model = DropoutMLPScratch(**hparams)
 data = d2l.FashionMNIST(batch_size=256)
 data.num_workers = 0
 trainer = d2l.Trainer(max_epochs=10)
+model.variance = ActivationsVariance(trainer, 1)
 trainer.fit(model, data)
 
 d2l.plt.show()
 
+
+print('===========================')
 
 class DropoutMLP(d2l.Classifier):
     def __init__(self, num_outputs, num_hiddens_1, num_hiddens_2,
@@ -53,7 +83,8 @@ class DropoutMLP(d2l.Classifier):
         super().__init__()
         self.save_hyperparameters()
         self.net = nn.Sequential(
-            nn.Flatten(), nn.LazyLinear(num_hiddens_1), nn.ReLU(),
+            nn.Flatten(), nn.LazyLinear(num_hiddens_1), nn.ReLU(), ActivationsVariance(trainer, 1),
+            nn.LazyLinear(num_hiddens_2), nn.ReLU(),
             nn.Dropout(dropout_1), nn.LazyLinear(num_hiddens_2), nn.ReLU(),
             nn.Dropout(dropout_2), nn.LazyLinear(num_outputs))
 
